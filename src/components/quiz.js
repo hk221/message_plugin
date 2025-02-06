@@ -1,82 +1,55 @@
-import React, { useState } from "react";
-import { Box, Button, Typography, Radio, RadioGroup, FormControlLabel, Dialog, DialogTitle, DialogContent, DialogActions } from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
 
-const questions = [
-  {
-    question: "What is the capital of France?",
-    options: ["Berlin", "Madrid", "Paris", "Rome"],
-    answer: "Paris",
-  },
-  {
-    question: "What is 2 + 2?",
-    options: ["3", "4", "5", "6"],
-    answer: "4",
-  },
-  {
-    question: "What is the square root of 16?",
-    options: ["2", "3", "4", "5"],
-    answer: "4",
-  },
-];
+/**
+ * @param {PluginProps} props
+ */
+export default function Message(props) {
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([]);
 
-export default function Quiz() {
-  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [selectedOption, setSelectedOption] = useState("");
-  const [score, setScore] = useState(0);
-  const [showResult, setShowResult] = useState(false);
-  const navigate = useNavigate();
+  // Fetch messages on component mount
+  useEffect(() => {
+    handleReceive();
+  }, []);
 
-  const currentQuestion = questions[currentQuestionIndex];
+  // Send message
+  const handleSend = () => {
+    if (!input) return;
+    const newMessage = { text: input };
 
-  const handleOptionChange = (event) => {
-    setSelectedOption(event.target.value);
+    props.sendCreateMessage(newMessage, true); // Persist message
+    setMessages((prev) => [
+      ...prev,
+      { Sender: props.getSender(), Message: newMessage, MessageID: Date.now().toString(), toggle: true },
+    ]);
+    setInput(""); // Clear input after sending
   };
 
-  const handleNext = () => {
-    if (selectedOption === currentQuestion.answer) {
-      setScore(score + 1);
+  // Receive messages
+  const handleReceive = () => {
+    const history = props.getDataHistory(); // Assume this returns an array of PluginMessage objects
+    if (history) {
+      setMessages(history);
     }
-    setSelectedOption("");
-    if (currentQuestionIndex < questions.length - 1) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
-    } else {
-      setShowResult(true);
-    }
-  };
-
-  const handleClose = () => {
-    setShowResult(false);
-    navigate("/");
   };
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", padding: 4, textAlign: "center" }}>
-      {!showResult ? (
-        <>
-          <Typography variant="h4" gutterBottom>
-            {currentQuestion.question}
-          </Typography>
-          <RadioGroup value={selectedOption} onChange={handleOptionChange} sx={{ marginBottom: 2 }}>
-            {currentQuestion.options.map((option, index) => (
-              <FormControlLabel key={index} value={option} control={<Radio />} label={option} />
-            ))}
-          </RadioGroup>
-          <Button variant="contained" color="primary" onClick={handleNext} disabled={!selectedOption}>
-            {currentQuestionIndex < questions.length - 1 ? "Next" : "Finish"}
-          </Button>
-        </>
-      ) : (
-        <Dialog open={showResult} onClose={handleClose}>
-          <DialogTitle>Quiz Completed</DialogTitle>
-          <DialogContent>
-            <Typography>Your score: {score} / {questions.length}</Typography>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleClose} color="primary" variant="contained">OK</Button>
-          </DialogActions>
-        </Dialog>
-      )}
-    </Box>
+    <div>
+      <h2>Chat</h2>
+      <div style={{ border: "1px solid black", padding: "10px", height: "200px", overflowY: "scroll" }}>
+        {messages.map((msg, index) => (
+          <div key={index}>
+            <strong>{msg.Sender}:</strong> {JSON.stringify(msg.Message)}
+          </div>
+        ))}
+      </div>
+      <input
+        type="text"
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        placeholder="Type a message..."
+      />
+      <button onClick={handleSend}>Send</button>
+    </div>
   );
 }
