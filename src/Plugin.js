@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import "./Chat.css"; // Import external styles
+import "./Chat.css"; // CSS
 
 /**
  * @param {PluginProps} props
@@ -48,7 +48,7 @@ export default function Plugin(props) {
       <h2 className="chat-title">Chat (User {props.getUser()})</h2>
       <div className="chat-box">
         {messages.map((msg, index) => {
-          const isMe = String(msg.sender) === String(props.getUser()); // Convert both to string for comparison
+          const isMe = String(msg.sender) === String(props.getUser()); // Convert both to string for comparison - for scrolling feat
 
           return (
             <div key={index} className={`chat-bubble ${isMe ? "sent" : "received"}`}>
@@ -57,7 +57,7 @@ export default function Plugin(props) {
             </div>
           );
         })}
-        <div ref={messageEndRef} /> {/* This will be scrolled into view */}
+        <div ref={messageEndRef} /> {/* This should be scrolled into view */}
       </div>
 
       <div className="chat-input-container">
