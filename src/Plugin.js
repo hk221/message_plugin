@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import "./Chat.css"; // Import external styles
 
 /**
  * @param {PluginProps} props
@@ -10,7 +11,7 @@ export default function Plugin(props) {
   // Update messages when history changes
   useEffect(() => {
     setMessages(props.getDataHistory());
-  }, [props.getDataHistory]); // Depend on history to trigger updates
+  }, [props.getDataHistory()]);
 
   // Send message
   const handleSend = () => {
@@ -27,29 +28,31 @@ export default function Plugin(props) {
   };
 
   return (
-    <div>
-      <h2>Chat (User {props.getUser()})</h2>
-      <div
-        style={{
-          border: "1px solid black",
-          padding: "10px",
-          height: "200px",
-          overflowY: "scroll",
-        }}
-      >
-        {messages.map((msg, index) => (
-          <div key={index}>
-            <strong>{msg.sender}:</strong> {msg.message?.message || msg.message}
-          </div>
-        ))}
+    <div className="chat-container">
+      <h2 className="chat-title">Chat (User {props.getUser()})</h2>
+      <div className="chat-box">
+        {messages.map((msg, index) => {
+          const isMe = String(msg.sender) === String(props.getUser()); // Convert both to string for comparison
+
+          return (
+            <div key={index} className={`chat-bubble ${isMe ? "sent" : "received"}`}>
+              {!isMe && <strong className="sender">User {msg.sender}</strong>}
+              <p className="message">{msg.message?.message || msg.message}</p>
+            </div>
+          );
+        })}
       </div>
-      <input
-        type="text"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="Type a message..."
-      />
-      <button onClick={handleSend}>Send</button>
+
+      <div className="chat-input-container">
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Type a message..."
+          className="chat-input"
+        />
+        <button onClick={handleSend} className="send-button">Send</button>
+      </div>
     </div>
   );
 }
