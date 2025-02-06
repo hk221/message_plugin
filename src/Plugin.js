@@ -39,10 +39,7 @@ export default function Plugin(props) {
       >
         {messages.map((msg, index) => (
           <div key={index}>
-            <strong>{msg.sender}:</strong>{" "}
-            {typeof msg.message === "object"
-              ? JSON.stringify(msg.message)
-              : msg.message}
+            <strong>{msg.sender}:</strong> {msg.message?.message || msg.message}
           </div>
         ))}
       </div>
