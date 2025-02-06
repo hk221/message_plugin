@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./Chat.css"; // Import external styles
 
 /**
@@ -7,11 +7,20 @@ import "./Chat.css"; // Import external styles
 export default function Plugin(props) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
+  const messageEndRef = useRef(null); // Reference for scrolling
+  const isCurrentUser = props.getUser() === String(props.getSender()); // Check if current user is the sender
 
   // Update messages when history changes
   useEffect(() => {
     setMessages(props.getDataHistory());
   }, [props.getDataHistory()]);
+
+  // Scroll to bottom when new message is added
+  useEffect(() => {
+    if (isCurrentUser) {
+      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
 
   // Send message
   const handleSend = () => {
@@ -25,6 +34,13 @@ export default function Plugin(props) {
 
     props.sendCreateMessage(newMessage, true); // Persist message
     setInput(""); // Clear input
+  };
+
+  // Handle sending on Enter key press
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter") {
+      handleSend();
+    }
   };
 
   return (
@@ -41,6 +57,7 @@ export default function Plugin(props) {
             </div>
           );
         })}
+        <div ref={messageEndRef} /> {/* This will be scrolled into view */}
       </div>
 
       <div className="chat-input-container">
@@ -48,6 +65,7 @@ export default function Plugin(props) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown} // Handle Enter key press
           placeholder="Type a message..."
           className="chat-input"
         />
