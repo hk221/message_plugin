@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from "react";
-import "./Chat.css"; // CSS
+import "./Chat.css"; // Ensure you update your CSS accordingly
 
 /**
  * @param {PluginProps} props
  */
 export default function Plugin(props) {
   const [input, setInput] = useState("");
+  const [imageFile, setImageFile] = useState(null);
   const [messages, setMessages] = useState([]);
-  const messageEndRef = useRef(null); // Reference for scrolling
-  const isCurrentUser = props.getUser() === String(props.getSender()); // Check if current user is the sender
+  const messageEndRef = useRef(null);
+  const isCurrentUser = props.getUser() === String(props.getSender());
 
   // Update messages when history changes
   useEffect(() => {
@@ -17,23 +18,36 @@ export default function Plugin(props) {
 
   // Scroll to bottom when new message is added
   useEffect(() => {
-    if (isCurrentUser) {
-      messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
+    messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Send message
+  // Send message with text and/or image
   const handleSend = () => {
-    if (!input) return;
+    if (!input && !imageFile) return; // Nothing to send
 
     const newMessage = {
       sender: props.getSender(),
-      message: input,
       messageID: Date.now().toString(),
     };
 
-    props.sendCreateMessage(newMessage, true); // Persist message
-    setInput(""); // Clear input
+    // If an image is selected, read it as Base64
+    if (imageFile) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        newMessage.message = {
+          text: input, // optional caption
+          image: reader.result,
+        };
+        props.sendCreateMessage(newMessage, true);
+        setInput("");
+        setImageFile(null);
+      };
+      reader.readAsDataURL(imageFile);
+    } else {
+      newMessage.message = input;
+      props.sendCreateMessage(newMessage, true);
+      setInput("");
+    }
   };
 
   // Handle sending on Enter key press
@@ -43,21 +57,36 @@ export default function Plugin(props) {
     }
   };
 
+  // Handle image file selection
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImageFile(file);
+    }
+  };
+
   return (
-    <div className="chat-container">
+    <div className="chat-container enhanced">
       <h2 className="chat-title">Chat (User {props.getUser()})</h2>
       <div className="chat-box">
         {messages.map((msg, index) => {
-          const isMe = String(msg.sender) === String(props.getUser()); // Convert both to string for comparison - for scrolling feat
+          const isMe = String(msg.sender) === String(props.getUser());
 
           return (
             <div key={index} className={`chat-bubble ${isMe ? "sent" : "received"}`}>
               {!isMe && <strong className="sender">User {msg.sender}</strong>}
-              <p className="message">{msg.message?.message || msg.message}</p>
+              {msg.message && msg.message.image ? (
+                <>
+                  {msg.message.text && <p className="message">{msg.message.text}</p>}
+                  <img src={msg.message.image} alt="Shared content" className="shared-image" />
+                </>
+              ) : (
+                <p className="message">{msg.message?.message || msg.message}</p>
+              )}
             </div>
           );
         })}
-        <div ref={messageEndRef} /> {/* This should be scrolled into view */}
+        <div ref={messageEndRef} /> {/* Scroll anchor */}
       </div>
 
       <div className="chat-input-container">
@@ -65,11 +94,19 @@ export default function Plugin(props) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown} // Handle Enter key press
+          onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           className="chat-input"
         />
-        <button onClick={handleSend} className="send-button">Send</button>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="image-upload-input"
+        />
+        <button onClick={handleSend} className="send-button">
+          Send
+        </button>
       </div>
     </div>
   );
