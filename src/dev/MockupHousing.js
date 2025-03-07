@@ -13,7 +13,7 @@ function MockupHousing(props) {
       <div
         style={{
           width: 500,
-          height: 850,
+          height: 650,
           outline: 2,
           outlineColor: "black",
           display: "flex",

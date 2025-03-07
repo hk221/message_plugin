@@ -6,7 +6,6 @@ import "./Chat.css"; // Ensure you update your CSS accordingly
  */
 export default function Plugin(props) {
   const [input, setInput] = useState("");
-  const [imageFile, setImageFile] = useState(null);
   const [messages, setMessages] = useState([]);
   const messageEndRef = useRef(null);
   const isCurrentUser = props.getUser() === String(props.getSender());
@@ -21,33 +20,18 @@ export default function Plugin(props) {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Send message with text and/or image
+  // Send text message
   const handleSend = () => {
-    if (!input && !imageFile) return; // Nothing to send
+    if (!input) return; // Nothing to send
 
     const newMessage = {
       sender: props.getSender(),
       messageID: Date.now().toString(),
+      message: input,
     };
 
-    // If an image is selected, read it as Base64
-    if (imageFile) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        newMessage.message = {
-          text: input, // optional caption
-          image: reader.result,
-        };
-        props.sendCreateMessage(newMessage, true);
-        setInput("");
-        setImageFile(null);
-      };
-      reader.readAsDataURL(imageFile);
-    } else {
-      newMessage.message = input;
-      props.sendCreateMessage(newMessage, true);
-      setInput("");
-    }
+    props.sendCreateMessage(newMessage, true);
+    setInput("");
   };
 
   // Handle sending on Enter key press
@@ -57,32 +41,21 @@ export default function Plugin(props) {
     }
   };
 
-  // Handle image file selection
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-    }
-  };
-
   return (
     <div className="chat-container enhanced">
       <h2 className="chat-title">Chat (User {props.getUser()})</h2>
       <div className="chat-box">
         {messages.map((msg, index) => {
           const isMe = String(msg.sender) === String(props.getUser());
-
+          // Check if the message is an object, then try to extract text from it
+          const displayMessage =
+            typeof msg.message === "object"
+              ? msg.message.text || msg.message.message || JSON.stringify(msg.message)
+              : msg.message;
           return (
             <div key={index} className={`chat-bubble ${isMe ? "sent" : "received"}`}>
               {!isMe && <strong className="sender">User {msg.sender}</strong>}
-              {msg.message && msg.message.image ? (
-                <>
-                  {msg.message.text && <p className="message">{msg.message.text}</p>}
-                  <img src={msg.message.image} alt="Shared content" className="shared-image" />
-                </>
-              ) : (
-                <p className="message">{msg.message?.message || msg.message}</p>
-              )}
+              <p className="message">{displayMessage}</p>
             </div>
           );
         })}
@@ -97,12 +70,6 @@ export default function Plugin(props) {
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           className="chat-input"
-        />
-        <input
-          type="file"
-          accept="image/*"
-          onChange={handleImageUpload}
-          className="image-upload-input"
         />
         <button onClick={handleSend} className="send-button">
           Send
