@@ -11,7 +11,7 @@
 }
 
 .chat-title {
-  background-color: #4CAF50;
+  background-color: #1ba494;
   color: white;
   padding: 15px;
   text-align: center;
@@ -80,9 +80,36 @@
 
 .send-button {
   padding: 10px 20px;
-  background-color: #4CAF50;
+  background-color: #1ba494;
   color: white;
   border: none;
   border-radius: 20px;
   cursor: pointer;
+}
+
+.leaderboard-page {
+  /* Centering the content */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+
+  /* Padding/margins for breathing room */
+  margin: 0 auto;
+  padding: 20px;
+
+  /* Font settings */
+  font-family: "Roboto", sans-serif; /* Change to any font you prefer */
+  color: #00796b; /* Adjust this color as desired */
+}
+
+.leaderboard-page h2 {
+  font-size: 2em;
+  margin-bottom: 10px;
+}
+
+.leaderboard-page p {
+  font-size: 1.2em;
+  line-height: 1.5;
 }
