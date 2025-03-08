@@ -4,7 +4,8 @@ import IconButton from "@mui/material/IconButton";
 import Button from "@mui/material/Button";
 import LeaderboardIcon from "@mui/icons-material/Leaderboard";
 import "./Chat.css";
-
+import { firestore } from "./components/firebase"; // your firebase config file
+import { collection, doc, getDoc, updateDoc } from "firebase/firestore";
 /**
  * @param {PluginProps} props
  */
@@ -13,15 +14,37 @@ export default function Plugin(props) {
   const [messages, setMessages] = useState([]);
   const [isLeaderboardVisible, setIsLeaderboardVisible] = useState(false);
   const messageEndRef = useRef(null);
+  const statsDocRef = doc(firestore, "statistics", "default");
+  const [stats, setstats] = useState(0);
 
   useEffect(() => {
     setMessages(props.getDataHistory());
   }, [props.getDataHistory()]);
 
   useEffect(() => {
+    getDoc(statsDocRef)
+      .then((docSnap) => {
+        if (docSnap.exists()) {
+          setstats(docSnap.data().totalTimeStudied);
+        } else {
+          console.error("No such document!");
+        }
+      })
+      .catch((error) => console.error("Error fetching coins:", error));
+  }, []); // ✅ No dependency on `open`
+  
+
+  useEffect(() => {
     // Scroll to the bottom when messages change
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    if (isLeaderboardVisible) {
+      handleReceive();  // ✅ Fetch data when leaderboard opens
+    }
+  }, [isLeaderboardVisible]);
+  
 
   // Send a message
   const handleSend = () => {
@@ -41,7 +64,21 @@ export default function Plugin(props) {
       handleSend();
     }
   };
-
+  const handleReceive = async () => {
+    try {
+      const docSnap = await getDoc(statsDocRef);
+      if (docSnap.exists()) {
+        const currentStats = docSnap.data().totalTimeStudied || 0;  // ✅ Use the correct field
+        setstats(currentStats);
+      } else {
+        console.error("No such document!");
+      }
+    } catch (error) {
+      console.error("Error fetching statistics:", error);
+    }
+  };
+  
+  
   return (
     <div className="chat-container enhanced">
       {/* If the leaderboard is visible, show only the leaderboard page */}
@@ -49,8 +86,7 @@ export default function Plugin(props) {
         <div className="leaderboard-page">
           <h2>Leaderboard</h2>
           {/* Replace with your real leaderboard content here */}
-          <p>Sample leaderboard data...</p>
-
+          <p>🏆 Total time studied: {stats} minutes</p>
           {/* Back button, styled as requested */}
           <Button
             onClick={() => setIsLeaderboardVisible(false)}
