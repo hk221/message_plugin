@@ -86,7 +86,7 @@ export default function Plugin(props) {
         <div className="leaderboard-page">
           <h2>Leaderboard</h2>
           {/* Replace with your real leaderboard content here */}
-          <p>🏆 Total time studied: {stats} minutes</p>
+          <p>🏆 Total time studied: {stats}</p>
           {/* Back button, styled as requested */}
           <Button
             onClick={() => setIsLeaderboardVisible(false)}
