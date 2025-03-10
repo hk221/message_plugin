@@ -95,30 +95,88 @@ export default function Plugin(props) {
     <div className="chat-container enhanced">
       {/* If the leaderboard is visible, show only the leaderboard page */}
       {isLeaderboardVisible ? (
-      <div className="leaderboard-page">
-        <h2>Overall Group Statistics! 💪🏽</h2>
-        <p>🏆 Collective time studied: {stats}</p>
-        <p>💰 Total Coins for Group: {totalCoins}</p> {/* NEW LINE */}
-
-        <Button
-          onClick={() => setIsLeaderboardVisible(false)}
-          sx={{
-            backgroundColor: "#1ba494",
-            color: "#ffffff",
-            mt: 3,
-            px: 4,
-            py: 1.5,
-            borderRadius: 2,
-            display: "block",
-            margin: "0 auto",
-            "&:hover": {
-              backgroundColor: "#005f56",
-            },
-          }}
-        >
-          Back 🔙
-        </Button>
+      <div className="leaderboard-page"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center", // ✅ Centers within the black housing
+        height: "45vh", // ✅ Stays inside the housing
+        width: "100%",
+        background: "linear-gradient(135deg, #1ba494 0%, #0e7467 100%)",
+        color: "white",
+        textAlign: "center",
+        borderRadius: "16px",
+        padding: "20px",
+        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
+      }}
+    >
+      <h2 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "10px", textAlign: "center", marginRight: "40px",
+}}>
+        🏆 Overall Group Statistics!
+      </h2>
+    
+      {/* Stats Cards */}
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "10px",
+        width: "100%",
+        maxWidth: "400px",
+        flexGrow: 1, // ✅ Allows content to adjust dynamically within the 50vh space
+        //move to the left
+        marginRight: "40px",
+      }}>
+        <div style={{
+          backgroundColor: "rgba(255, 255, 255, 0.15)",
+          borderRadius: "12px",
+          padding: "12px",
+          fontSize: "1.1rem",
+          textAlign: "center",
+          width: "100%",
+          boxShadow: "0px 2px 6px rgba(0,0,0,0.2)"
+        }}>
+          ⏳ <strong>Collective Time Studied:</strong> {stats} mins
+        </div>
+    
+        <div style={{
+          backgroundColor: "rgba(255, 255, 255, 0.15)",
+          borderRadius: "12px",
+          padding: "12px",
+          fontSize: "1.1rem",
+          textAlign: "center",
+          width: "100%",
+          boxShadow: "0px 2px 6px rgba(0,0,0,0.2)"
+        }}>
+          💰 <strong>Total Coins Earned:</strong> {totalCoins}
+        </div>
       </div>
+    
+      {/* Back Button */}
+      <Button
+        onClick={() => setIsLeaderboardVisible(false)}
+        sx={{
+          backgroundColor: "#FF9800",
+          color: "#ffffff",
+          fontSize: "1rem",
+          fontWeight: 600,
+          borderRadius: "50px",
+          px: 4,
+          py: 1.5,
+          mt: "auto", // ✅ Keeps button pushed down without breaking layout
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
+          "&:hover": { backgroundColor: "#e68900" },
+          marginRight: "40px",
+        }}
+      >
+        Back 🔙
+      </Button>
+    </div>
     ) : (
         // Otherwise, show the chat UI
         <>
