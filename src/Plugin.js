@@ -16,6 +16,7 @@ export default function Plugin(props) {
   const messageEndRef = useRef(null);
   const statsDocRef = doc(firestore, "statistics", "default");
   const [stats, setstats] = useState(0);
+  const [totalCoins, setTotalCoins] = useState(0); // New state for "Total Coins for Group!"
 
   useEffect(() => {
     setMessages(props.getDataHistory());
@@ -31,17 +32,16 @@ export default function Plugin(props) {
         }
       })
       .catch((error) => console.error("Error fetching coins:", error));
-  }, []); // ✅ No dependency on `open`
+  }, []); 
   
 
   useEffect(() => {
-    // Scroll to the bottom when messages change
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
     if (isLeaderboardVisible) {
-      handleReceive();  // ✅ Fetch data when leaderboard opens
+      handleReceive();  
     }
   }, [isLeaderboardVisible]);
   
@@ -66,48 +66,60 @@ export default function Plugin(props) {
   };
   const handleReceive = async () => {
     try {
+      // Fetch total study time
       const docSnap = await getDoc(statsDocRef);
       if (docSnap.exists()) {
-        const currentStats = docSnap.data().totalTimeStudied || 0;  // ✅ Use the correct field
+        const currentStats = docSnap.data().totalTimeStudied || 0;
         setstats(currentStats);
       } else {
-        console.error("No such document!");
+        console.error("No such document in statistics!");
       }
+  
+      // Fetch total group coins from "coins/default"
+      const coinsDocRef = doc(firestore, "coins", "default");
+      const coinsDocSnap = await getDoc(coinsDocRef);
+      
+      if (coinsDocSnap.exists()) {
+        const groupCoins = coinsDocSnap.data().coins || 0; // Get the coins value
+        setTotalCoins(groupCoins);
+      } else {
+        console.error("No such document in coins!");
+      }
+  
     } catch (error) {
-      console.error("Error fetching statistics:", error);
+      console.error("Error fetching data:", error);
     }
   };
-  
   
   return (
     <div className="chat-container enhanced">
       {/* If the leaderboard is visible, show only the leaderboard page */}
       {isLeaderboardVisible ? (
-        <div className="leaderboard-page">
-          <h2>Leaderboard</h2>
-          {/* Replace with your real leaderboard content here */}
-          <p>🏆 Total time studied: {stats}</p>
-          {/* Back button, styled as requested */}
-          <Button
-            onClick={() => setIsLeaderboardVisible(false)}
-            sx={{
-              backgroundColor: "#1ba494",
-              color: "#ffffff",
-              mt: 3,
-              px: 4,
-              py: 1.5,
-              borderRadius: 2,
-              display: "block",
-              margin: "0 auto", 
-              "&:hover": {
-                backgroundColor: "#005f56",
-              },
-            }}
-          >
-            Back 🔙
-          </Button>
-        </div>
-      ) : (
+      <div className="leaderboard-page">
+        <h2>Overall Group Statistics! 💪🏽</h2>
+        <p>🏆 Collective time studied: {stats}</p>
+        <p>💰 Total Coins for Group: {totalCoins}</p> {/* NEW LINE */}
+
+        <Button
+          onClick={() => setIsLeaderboardVisible(false)}
+          sx={{
+            backgroundColor: "#1ba494",
+            color: "#ffffff",
+            mt: 3,
+            px: 4,
+            py: 1.5,
+            borderRadius: 2,
+            display: "block",
+            margin: "0 auto",
+            "&:hover": {
+              backgroundColor: "#005f56",
+            },
+          }}
+        >
+          Back 🔙
+        </Button>
+      </div>
+    ) : (
         // Otherwise, show the chat UI
         <>
           <h2 className="chat-title">Chat (User {props.getUser()})</h2>
