@@ -5,7 +5,8 @@ import Button from "@mui/material/Button";
 import LeaderboardIcon from "@mui/icons-material/Leaderboard";
 import "./Chat.css";
 import { firestore } from "./components/firebase"; // your firebase config file
-import { collection, doc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, setDoc, addDoc, query, onSnapshot, collectionGroup } from "firebase/firestore";
+
 /**
  * @param {PluginProps} props
  */
@@ -44,18 +45,35 @@ export default function Plugin(props) {
       handleReceive();  
     }
   }, [isLeaderboardVisible]);
-  
 
-  // Send a message
-  const handleSend = () => {
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collectionGroup(firestore, "chat"), (snapshot) => {
+      const allMessages = snapshot.docs
+        .map(doc => doc.data())
+        .sort((a, b) => a.timestamp?.toDate() - b.timestamp?.toDate());
+  
+      setMessages(allMessages);
+    });
+  
+    return () => unsubscribe();
+  }, []);
+
+  const handleSend = async () => {
     if (!input) return;
-    const newMessage = {
-      sender: props.getSender(),
+  
+    const messageData = {
+      sender: props.getUser(),
       messageID: Date.now().toString(),
       message: input,
+      timestamp: new Date()
     };
-    props.sendCreateMessage(newMessage, true);
-    setInput("");
+  
+    try {
+      await addDoc(collection(firestore, "messages", props.getUser(), "chat"), messageData);
+      setInput("");
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   };
 
   // Send on Enter
@@ -179,61 +197,60 @@ export default function Plugin(props) {
     </div>
     ) : (
         // Otherwise, show the chat UI
-        <>
-          <h2 className="chat-title">Chat (User {props.getUser()})</h2>
-          <div className="chat-box">
-            {messages.map((msg, index) => {
-              const isMe = String(msg.sender) === String(props.getUser());
-              // Handle object messages vs. string
-              const displayMessage =
-                typeof msg.message === "object"
-                  ? msg.message.text ||
-                    msg.message.message ||
-                    JSON.stringify(msg.message)
-                  : msg.message;
+      <>
+        <h2 className="chat-title">Chat (User {props.getUser()})</h2>
+        <div className="chat-box">
+          {messages.map((msg, index) => {
+            const isMe = String(msg.sender) === String(props.getUser());
 
-              return (
-                <div key={index} className={`chat-bubble ${isMe ? "sent" : "received"}`}>
-                  {!isMe && <strong className="sender">User {msg.sender}</strong>}
-                  <p className="message">{displayMessage}</p>
-                </div>
-              );
-            })}
-            <div ref={messageEndRef} />
-          </div>
+            // Robust message parser
+            const displayMessage =
+              typeof msg.message === "object"
+                ? msg.message.text || msg.message.message || JSON.stringify(msg.message)
+                : msg.message;
 
-          {/* Input row */}
-          <div className="chat-input-container" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              className="chat-input"
-            />
+            return (
+              <div key={index} className={`chat-bubble ${isMe ? "sent" : "received"}`}>
+                {!isMe && <strong className="sender">User {msg.sender}</strong>}
+                <p className="message">{displayMessage}</p>
+              </div>
+            );
+          })}
+          <div ref={messageEndRef} />
+        </div>
 
-            {/* Leaderboard toggle button */}
-            <Tooltip title="View Leaderboard">
-              <IconButton
-                sx={{
-                  backgroundColor: "#e5c185",
-                  color: "#FFFFFF",
-                  margin: "0 auto",
-                  "&:hover": { backgroundColor: "#deae9f" },
-                }}
-                onClick={() => setIsLeaderboardVisible(true)}
-              >
-                <LeaderboardIcon />
-              </IconButton>
-            </Tooltip>
+        {/* Input row */}
+        <div className="chat-input-container" style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type a message..."
+            className="chat-input"
+          />
 
-            {/* Send button */}
-            <button onClick={handleSend} className="send-button">
-              Send
-            </button>
-          </div>
-        </>
+          {/* Leaderboard toggle button */}
+          <Tooltip title="View Leaderboard">
+            <IconButton
+              sx={{
+                backgroundColor: "#e5c185",
+                color: "#FFFFFF",
+                margin: "0 auto",
+                "&:hover": { backgroundColor: "#deae9f" },
+              }}
+              onClick={() => setIsLeaderboardVisible(true)}
+            >
+              <LeaderboardIcon />
+            </IconButton>
+          </Tooltip>
+
+          {/* Send button */}
+          <button onClick={handleSend} className="send-button">
+            Send
+          </button>
+        </div>
+      </>
       )}
     </div>
   );
