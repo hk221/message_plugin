@@ -58,17 +58,17 @@ export default function MessageMockup() {
     <div style={{ display: "flex" }}>
       <MockupHousing number={1} style={{ marginRight: "100px" }}>
         <Plugin
-          getData={getData}
-          getDataHistory={getDataHistory}
-          getSender={getSender}
-          getUser={getUserLocal}
-          isMe={isMeLocal}
-          sendCreateMessage={sendCreateMessageLocal}
-          sendUpdateMessage={sendUpdateMessage}
-          sendDeleteMessage={sendDeleteMessage}
+          // getData={getData}
+          // getDataHistory={getDataHistory}
+          // getSender={getSender}
+          // getUser={getUserLocal}
+          // isMe={isMeLocal}
+          // sendCreateMessage={sendCreateMessageLocal}
+          // sendUpdateMessage={sendUpdateMessage}
+          // sendDeleteMessage={sendDeleteMessage}
         />
       </MockupHousing>
-      <MockupHousing number={2} style={{ marginLeft: "100px" }}>
+      {/* <MockupHousing number={2} style={{ marginLeft: "100px" }}>
         <Plugin
           getData={getData}
           getDataHistory={getDataHistory}
@@ -79,7 +79,7 @@ export default function MessageMockup() {
           sendUpdateMessage={sendUpdateMessage}
           sendDeleteMessage={sendDeleteMessage}
         />
-      </MockupHousing>
+      </MockupHousing> */}
     </div>
   );
 }
