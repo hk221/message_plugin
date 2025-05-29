@@ -5,22 +5,26 @@ import Button from "@mui/material/Button";
 import LeaderboardIcon from "@mui/icons-material/Leaderboard";
 import PersonIcon from "@mui/icons-material/Person";
 import SettingsIcon from "@mui/icons-material/Settings";
-import { firestore } from "./firebase";
+import ThumbUpIcon from "@mui/icons-material/ThumbUp";
+import NotificationsActiveIcon from "@mui/icons-material/NotificationsActive";
+import Switch from "@mui/material/Switch";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import FormControlLabel from "@mui/material/FormControlLabel";
 import {
   collection,
   doc,
   getDoc,
   addDoc,
   onSnapshot,
-  setDoc
+  setDoc,
+  updateDoc,
+  increment
 } from "firebase/firestore";
+import { firestore } from "./firebase";
 import { useAuth } from "./AuthContext";
 import ChangeUsername from "./ChangeUsername";
 import "../Chat.css";
-import Switch from "@mui/material/Switch";
-import Card from "@mui/material/Card";
-import CardContent from "@mui/material/CardContent";
-import FormControlLabel from "@mui/material/FormControlLabel";
 
 export default function Messages() {
   // Chat and UI state
@@ -107,6 +111,28 @@ export default function Messages() {
     }
   };
 
+  // Send a “like”
+  const sendLike = async targetUid => {
+    try {
+      await updateDoc(doc(firestore, "statistics", targetUid), {
+        likes: increment(1)
+      });
+    } catch (e) {
+      console.error("Error sending like:", e);
+    }
+  };
+
+  // Send a “nudge”
+  const sendNudge = async targetUid => {
+    try {
+      await updateDoc(doc(firestore, "statistics", targetUid), {
+        nudges: increment(1)
+      });
+    } catch (e) {
+      console.error("Error sending nudge:", e);
+    }
+  };
+
   // Listen for per‐user stats when leaderboard open
   useEffect(() => {
     if (!isLeaderboardVisible) return;
@@ -114,7 +140,9 @@ export default function Messages() {
     const unsub = onSnapshot(collection(firestore, "statistics"), async snap => {
       let statsArr = snap.docs.map(d => ({
         uid: d.id,
-        time: d.data().totalTimeStudied || 0
+        time: d.data().totalTimeStudied || 0,
+        likes: d.data().likes || 0,
+        nudges: d.data().nudges || 0
       }));
       statsArr.sort((a, b) => b.time - a.time);
       statsArr = await Promise.all(
@@ -230,13 +258,36 @@ export default function Messages() {
                     borderRadius: 8,
                     padding: 8,
                     display: "flex",
-                    justifyContent: "space-between"
+                    justifyContent: "space-between",
+                    alignItems: "center"
                   }}
                 >
-                  <strong>
-                    {idx + 1}. {u.username}
-                  </strong>
-                  <span>{u.time} mins</span>
+                  <div>
+                    <strong>
+                      {idx + 1}. {u.username}
+                    </strong>
+                    <span style={{ marginLeft: 8 }}>{u.time} mins</span>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                    <IconButton
+                      size="small"
+                      disabled={u.uid === user?.uid}
+                      onClick={() => sendLike(u.uid)}
+                      sx={{ color: "white" }}
+                    >
+                      <ThumbUpIcon fontSize="small" />
+                    </IconButton>
+                    <span>{u.likes}</span>
+                    <IconButton
+                      size="small"
+                      disabled={u.uid === user?.uid}
+                      onClick={() => sendNudge(u.uid)}
+                      sx={{ color: "white" }}
+                    >
+                      <NotificationsActiveIcon fontSize="small" />
+                    </IconButton>
+                    <span>{u.nudges}</span>
+                  </div>
                 </div>
               ))}
             </>
@@ -323,13 +374,7 @@ export default function Messages() {
             boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
           }}
         >
-          <CardContent
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 2
-            }}
-          >
+          <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             <FormControlLabel
               control={
                 <Switch
@@ -400,14 +445,9 @@ export default function Messages() {
         {messages.map((msg, i) => {
           const isMe = String(msg.sender) === String(user?.uid);
           return (
-            <div
-              key={i}
-              className={`chat-bubble ${isMe ? "sent" : "received"}`}
-            >
+            <div key={i} className={`chat-bubble ${isMe ? "sent" : "received"}`}>
               {!isMe && (
-                <strong className="sender">
-                  {msg.username || msg.sender}
-                </strong>
+                <strong className="sender">{msg.username || msg.sender}</strong>
               )}
               <p className="message">{msg.message}</p>
             </div>
@@ -415,14 +455,7 @@ export default function Messages() {
         })}
         <div ref={messageEndRef} />
       </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          marginTop: 10
-        }}
-      >
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
         <input
           type="text"
           value={input}
@@ -435,17 +468,13 @@ export default function Messages() {
           Send
         </button>
 
-        {/* Show the stats icon if any of the features is on */}
+        {/* Show the stats icon if any feature is on */}
         {(groupSettings.enableGroupStats ||
           groupSettings.enableLeaderboard ||
           groupSettings.enableSharedCoins) && (
           <Tooltip title="View Leaderboard / Coins">
             <IconButton
-              sx={{
-                backgroundColor: "#e5c185",
-                color: "#fff",
-                "&:hover": { backgroundColor: "#deae9f" }
-              }}
+              sx={{ backgroundColor: "#e5c185", color: "#fff", "&:hover": { backgroundColor: "#deae9f" } }}
               onClick={() => setIsLeaderboardVisible(true)}
             >
               <LeaderboardIcon />
@@ -455,11 +484,7 @@ export default function Messages() {
 
         <Tooltip title="Change Display Name">
           <IconButton
-            sx={{
-              backgroundColor: "#e5c185",
-              color: "#fff",
-              "&:hover": { backgroundColor: "#deae9f" }
-            }}
+            sx={{ backgroundColor: "#e5c185", color: "#fff", "&:hover": { backgroundColor: "#deae9f" } }}
             onClick={() => setIsChangeUsernameVisible(true)}
           >
             <PersonIcon />
@@ -467,11 +492,7 @@ export default function Messages() {
         </Tooltip>
         <Tooltip title="Settings">
           <IconButton
-            sx={{
-              backgroundColor: "#e5c185",
-              color: "#fff",
-              "&:hover": { backgroundColor: "#deae9f" }
-            }}
+            sx={{ backgroundColor: "#e5c185", color: "#fff", "&:hover": { backgroundColor: "#deae9f" } }}
             onClick={() => setIsSettingsVisible(true)}
           >
             <SettingsIcon />
