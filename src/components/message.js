@@ -17,6 +17,10 @@ import {
 import { useAuth } from "./AuthContext";
 import ChangeUsername from "./ChangeUsername";
 import "../Chat.css";
+import Switch from "@mui/material/Switch";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import FormControlLabel from "@mui/material/FormControlLabel";
 
 export default function Messages() {
   // Chat and UI state
@@ -301,54 +305,85 @@ export default function Messages() {
           flexDirection: "column",
           alignItems: "center",
           padding: 20,
-          background: "#f9f9f9",
+          background: "linear-gradient(135deg, #1ba494, #0e7467)",
           borderRadius: 16,
-          maxWidth: 400,
-          margin: "20px auto",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
+          color: "white",
+          minHeight: "20vh",
+          boxSizing: "border-box"
         }}
       >
-        <h3 style={{ marginBottom: 10 }}>🔧 Group Settings</h3>
-        <label style={{ margin: "8px 0" }}>
-          <input
-            type="checkbox"
-            checked={groupSettings.enableGroupStats}
-            onChange={e =>
-              updateGroupSetting("enableGroupStats", e.target.checked)
-            }
-          />{" "}
-          Enable Group Stats
-        </label>
-        <label style={{ margin: "8px 0" }}>
-          <input
-            type="checkbox"
-            checked={groupSettings.enableLeaderboard}
-            onChange={e =>
-              updateGroupSetting("enableLeaderboard", e.target.checked)
-            }
-          />{" "}
-          Enable Leaderboard
-        </label>
-        <label style={{ margin: "8px 0" }}>
-          <input
-            type="checkbox"
-            checked={groupSettings.enableSharedCoins}
-            onChange={e =>
-              updateGroupSetting("enableSharedCoins", e.target.checked)
-            }
-          />{" "}
-          Enable Shared Coins
-        </label>
+        <h2 style={{ fontSize: "2rem", marginBottom: 20 }}>🔧 Group Settings</h2>
+
+        <Card
+          sx={{
+            width: "100%",
+            maxWidth: 400,
+            background: "rgba(255,255,255,0.15)",
+            borderRadius: 12,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+          }}
+        >
+          <CardContent
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 2
+            }}
+          >
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={groupSettings.enableGroupStats}
+                  onChange={e =>
+                    updateGroupSetting("enableGroupStats", e.target.checked)
+                  }
+                  sx={{ "& .MuiSwitch-thumb": { backgroundColor: "#fff" } }}
+                />
+              }
+              label="Enable Group Stats"
+              sx={{ color: "white", fontSize: "1rem" }}
+            />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={groupSettings.enableLeaderboard}
+                  onChange={e =>
+                    updateGroupSetting("enableLeaderboard", e.target.checked)
+                  }
+                  sx={{ "& .MuiSwitch-thumb": { backgroundColor: "#fff" } }}
+                />
+              }
+              label="Enable Leaderboard"
+              sx={{ color: "white", fontSize: "1rem" }}
+            />
+
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={groupSettings.enableSharedCoins}
+                  onChange={e =>
+                    updateGroupSetting("enableSharedCoins", e.target.checked)
+                  }
+                  sx={{ "& .MuiSwitch-thumb": { backgroundColor: "#fff" } }}
+                />
+              }
+              label="Enable Shared Coins"
+              sx={{ color: "white", fontSize: "1rem" }}
+            />
+          </CardContent>
+        </Card>
+
         <Button
           onClick={() => setIsSettingsVisible(false)}
           sx={{
-            mt: 2,
-            backgroundColor: "#0e7467",
+            mt: 4,
+            backgroundColor: "#FF9800",
             color: "#fff",
             borderRadius: 50,
             px: 4,
             py: 1.5,
-            "&:hover": { backgroundColor: "#1ba494" }
+            "&:hover": { backgroundColor: "#e68900" }
           }}
         >
           Back 🔙
