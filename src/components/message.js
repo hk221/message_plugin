@@ -4,7 +4,7 @@ import IconButton from "@mui/material/IconButton";
 import Button from "@mui/material/Button";
 import LeaderboardIcon from "@mui/icons-material/Leaderboard";
 import PersonIcon from "@mui/icons-material/Person";
-import "../Chat.css";
+import SettingsIcon from "@mui/icons-material/Settings";
 import { firestore } from "./firebase";
 import {
   collection,
@@ -12,96 +12,130 @@ import {
   getDoc,
   addDoc,
   onSnapshot,
-  collectionGroup
+  setDoc
 } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
-import ChangeUsername from "./changeUsername";
+import ChangeUsername from "./ChangeUsername";
+import "../Chat.css";
 
 export default function Messages() {
+  // Chat and UI state
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState([]);
   const [isLeaderboardVisible, setIsLeaderboardVisible] = useState(false);
   const [isChangeUsernameVisible, setIsChangeUsernameVisible] = useState(false);
+  const [isSettingsVisible, setIsSettingsVisible] = useState(false);
   const messageEndRef = useRef(null);
-  const statsDocRef = doc(firestore, "statistics", "default");
-  const [stats, setStats] = useState(0);
-  const [totalCoins, setTotalCoins] = useState(0);
   const { user } = useAuth();
 
-  // Listen to changes in the user's document to update the display name in real-time.
+  // User info
   const [displayName, setDisplayName] = useState("");
-  useEffect(() => {
-    if (user) {
-      const userDocRef = doc(firestore, "users", user.uid);
-      const unsubscribe = onSnapshot(userDocRef, (docSnap) => {
-        if (docSnap.exists() && docSnap.data().username) {
-          setDisplayName(docSnap.data().username);
-        } else {
-          setDisplayName(user.uid);
-        }
-      });
-      return () => unsubscribe();
-    }
-  }, [user]);
+  // Stats state
+  const [totalCoins, setTotalCoins] = useState(0);
+  const [groupTotalTime, setGroupTotalTime] = useState(0);
+  const [individualStats, setIndividualStats] = useState([]);
+  const filteredStats = individualStats.filter(u => u.uid !== "default");
+  // Group‐wide toggles
+  const [groupSettings, setGroupSettings] = useState({
+    enableGroupStats: true,
+    enableLeaderboard: true,
+    enableSharedCoins: false
+  });
 
-  // Listen for chat messages from the globalChat collection
+  // 1️⃣ Listen for group settings changes
   useEffect(() => {
-    const unsubscribe = onSnapshot(
-      collection(firestore, "globalChat"),
-      (snapshot) => {
-        const allMessages = snapshot.docs
-          .map((doc) => doc.data())
-          .sort((a, b) => a.timestamp?.toDate() - b.timestamp?.toDate());
-        setMessages(allMessages);
+    const unsub = onSnapshot(doc(firestore, "groups", "globalChat"), snap => {
+      if (snap.exists()) {
+        const data = snap.data();
+        setGroupSettings({
+          enableGroupStats: !!data.enableGroupStats,
+          enableLeaderboard: !!data.enableLeaderboard,
+          enableSharedCoins: !!data.enableSharedCoins
+        });
       }
-    );
-    return () => unsubscribe();
+    });
+    return unsub;
   }, []);
 
-  // Auto-scroll to the bottom when messages update
+  // 2️⃣ Listen for user displayName
+  useEffect(() => {
+    if (!user) return;
+    const unsub = onSnapshot(doc(firestore, "users", user.uid), snap => {
+      if (snap.exists() && snap.data().username) {
+        setDisplayName(snap.data().username);
+      } else {
+        setDisplayName(user.uid);
+      }
+    });
+    return unsub;
+  }, [user]);
+
+  // 3️⃣ Listen for chat messages
+  useEffect(() => {
+    const unsub = onSnapshot(collection(firestore, "globalChat"), snapshot => {
+      const all = snapshot.docs
+        .map(d => d.data())
+        .sort((a, b) => a.timestamp?.toDate() - b.timestamp?.toDate());
+      setMessages(all);
+    });
+    return unsub;
+  }, []);
+
+  // Auto‐scroll on new messages
   useEffect(() => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // When the leaderboard is visible, fetch stats and group coins
-  useEffect(() => {
-    if (isLeaderboardVisible) {
-      handleReceive();
-    }
-  }, [isLeaderboardVisible]);
-
+  // Fetch coins + group total time when leaderboard opens
   const handleReceive = async () => {
     try {
-      const docSnap = await getDoc(statsDocRef);
-      if (docSnap.exists()) {
-        setStats(docSnap.data().totalTimeStudied || 0);
-      } else {
-        console.error("No such document in statistics!");
-      }
-      const coinsDocRef = doc(firestore, "coins", "default");
-      const coinsDocSnap = await getDoc(coinsDocRef);
-      if (coinsDocSnap.exists()) {
-        setTotalCoins(coinsDocSnap.data().coins || 0);
-      } else {
-        console.error("No such document in coins!");
-      }
-    } catch (error) {
-      console.error("Error fetching data:", error);
+      // Total coins
+      const coinsSnap = await getDoc(doc(firestore, "coins", "default"));
+      setTotalCoins(coinsSnap.exists() ? coinsSnap.data().coins || 0 : 0);
+
+      // Group total time studied
+      const groupSnap = await getDoc(doc(firestore, "statistics", "default"));
+      setGroupTotalTime(
+        groupSnap.exists() ? groupSnap.data().totalTimeStudied || 0 : 0
+      );
+    } catch (e) {
+      console.error("Error fetching group stats:", e);
     }
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter") {
-      handleSend();
-    }
-  };
+  // Listen for per‐user stats when leaderboard open
+  useEffect(() => {
+    if (!isLeaderboardVisible) return;
+    handleReceive();
+    const unsub = onSnapshot(collection(firestore, "statistics"), async snap => {
+      let statsArr = snap.docs.map(d => ({
+        uid: d.id,
+        time: d.data().totalTimeStudied || 0
+      }));
+      statsArr.sort((a, b) => b.time - a.time);
+      statsArr = await Promise.all(
+        statsArr.map(async entry => {
+          const userSnap = await getDoc(doc(firestore, "users", entry.uid));
+          return {
+            ...entry,
+            username:
+              userSnap.exists() && userSnap.data().username
+                ? userSnap.data().username
+                : entry.uid
+          };
+        })
+      );
+      setIndividualStats(statsArr);
+    });
+    return unsub;
+  }, [isLeaderboardVisible]);
 
+  // Send a new chat message
   const handleSend = async () => {
-    console.log("handleSend triggered, input:", input);
-    if (!input || !user) return;
+    if (!input.trim() || !user) return;
     const messageData = {
       sender: user.uid,
-      username: displayName, // include the custom display name
+      username: displayName,
       messageID: Date.now().toString(),
       message: input,
       timestamp: new Date()
@@ -109,12 +143,27 @@ export default function Messages() {
     try {
       await addDoc(collection(firestore, "globalChat"), messageData);
       setInput("");
-    } catch (error) {
-      console.error("Error sending message:", error);
+    } catch (err) {
+      console.error("Error sending message:", err);
     }
   };
 
-  // Conditional rendering for leaderboard and change username screens
+  // Update any one of the three group settings
+  const updateGroupSetting = async (key, value) => {
+    try {
+      await setDoc(
+        doc(firestore, "groups", "globalChat"),
+        { [key]: value },
+        { merge: true }
+      );
+    } catch (err) {
+      console.error("Error updating group setting:", err);
+    }
+  };
+
+  const handleKeyDown = e => e.key === "Enter" && handleSend();
+
+  // --- Leaderboard View ---
   if (isLeaderboardVisible) {
     return (
       <div
@@ -123,82 +172,81 @@ export default function Messages() {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          justifyContent: "center",
-          height: "45vh",
-          width: "100%",
-          background: "linear-gradient(135deg, #1ba494 0%, #0e7467 100%)",
-          color: "white",
-          textAlign: "center",
-          borderRadius: "16px",
-          padding: "20px",
-          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)"
+          padding: 20,
+          background: "linear-gradient(135deg, #1ba494, #0e7467)",
+          borderRadius: 16,
+          color: "white"
         }}
       >
-        <h2
-          style={{
-            fontSize: "2rem",
-            fontWeight: "bold",
-            marginBottom: "10px",
-            textAlign: "center",
-            marginRight: "40px"
-          }}
-        >
+        <h2 style={{ fontSize: "2rem", marginBottom: 10 }}>
           🏆 Overall Group Statistics!
         </h2>
-        {/* Stats Cards */}
-      <div style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: "10px",
-        width: "100%",
-        maxWidth: "400px",
-        flexGrow: 1, // ✅ Allows content to adjust dynamically within the 50vh space
-        //move to the left
-        marginRight: "40px",
-      }}>
-        <div style={{
-          backgroundColor: "rgba(255, 255, 255, 0.15)",
-          borderRadius: "12px",
-          padding: "12px",
-          fontSize: "1.1rem",
-          textAlign: "center",
-          width: "100%",
-          boxShadow: "0px 2px 6px rgba(0,0,0,0.2)"
-        }}>
-          ⏳ <strong>Collective Time Studied:</strong> {stats} mins
+        <div
+          style={{
+            width: "100%",
+            maxWidth: 400,
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            marginBottom: 30
+          }}
+        >
+          {groupSettings.enableGroupStats && (
+            <div
+              style={{
+                background: "rgba(255,255,255,0.15)",
+                borderRadius: 12,
+                padding: 12
+              }}
+            >
+              ⏱️ <strong>Total Time Studied:</strong> {groupTotalTime} mins
+            </div>
+          )}
+          {groupSettings.enableSharedCoins && (
+            <div
+              style={{
+                background: "rgba(255,255,255,0.15)",
+                borderRadius: 12,
+                padding: 12
+              }}
+            >
+              💰 <strong>Total Coins:</strong> {totalCoins}
+            </div>
+          )}
+          {groupSettings.enableLeaderboard && (
+            <>
+              <h3 style={{ margin: "10px 0", fontSize: "1.5rem" }}>
+                🥇 Leaderboard
+              </h3>
+              {filteredStats.map((u, idx) => (
+                <div
+                  key={u.uid}
+                  style={{
+                    background: "rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    padding: 8,
+                    display: "flex",
+                    justifyContent: "space-between"
+                  }}
+                >
+                  <strong>
+                    {idx + 1}. {u.username}
+                  </strong>
+                  <span>{u.time} mins</span>
+                </div>
+              ))}
+            </>
+          )}
         </div>
-    
-        <div style={{
-          backgroundColor: "rgba(255, 255, 255, 0.15)",
-          borderRadius: "12px",
-          padding: "12px",
-          fontSize: "1.1rem",
-          textAlign: "center",
-          width: "100%",
-          boxShadow: "0px 2px 6px rgba(0,0,0,0.2)"
-        }}>
-          💰 <strong>Total Coins Earned:</strong> {totalCoins}
-        </div>
-      </div>
         <Button
           onClick={() => setIsLeaderboardVisible(false)}
           sx={{
             backgroundColor: "#FF9800",
-            color: "#ffffff",
-            fontSize: "1rem",
-            fontWeight: 600,
-            borderRadius: "50px",
+            color: "#fff",
+            borderRadius: 50,
             px: 4,
             py: 1.5,
-            mt: "auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
-            "&:hover": { backgroundColor: "#e68900" },
-            marginRight: "40px"
+            "&:hover": { backgroundColor: "#e68900" }
           }}
         >
           Back 🔙
@@ -207,6 +255,7 @@ export default function Messages() {
     );
   }
 
+  // --- Change Username View ---
   if (isChangeUsernameVisible) {
     return (
       <div
@@ -216,29 +265,23 @@ export default function Messages() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          height: "45vh",
-          width: "100%",
-          background: "linear-gradient(135deg, #e5c185 0%, #deae9f 100%)",
-          color: "white",
-          textAlign: "center",
-          borderRadius: "16px",
-          padding: "20px",
-          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)"
+          height: "20vh",
+          background: "linear-gradient(135deg, #e5c185, #deae9f)",
+          borderRadius: 10,
+          padding: 15,
+          color: "white"
         }}
       >
         <ChangeUsername />
         <Button
           onClick={() => setIsChangeUsernameVisible(false)}
           sx={{
+            mt: 2,
             backgroundColor: "#0e7467",
-            color: "#ffffff",
-            fontSize: "1rem",
-            fontWeight: 600,
-            borderRadius: "50px",
+            color: "#fff",
+            borderRadius: 50,
             px: 4,
             py: 1.5,
-            mt: 2,
-            boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
             "&:hover": { backgroundColor: "#1ba494" }
           }}
         >
@@ -248,34 +291,107 @@ export default function Messages() {
     );
   }
 
+  // --- Settings View ---
+  if (isSettingsVisible) {
+    return (
+      <div
+        className="settings-page"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          padding: 20,
+          background: "#f9f9f9",
+          borderRadius: 16,
+          maxWidth: 400,
+          margin: "20px auto",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.1)"
+        }}
+      >
+        <h3 style={{ marginBottom: 10 }}>🔧 Group Settings</h3>
+        <label style={{ margin: "8px 0" }}>
+          <input
+            type="checkbox"
+            checked={groupSettings.enableGroupStats}
+            onChange={e =>
+              updateGroupSetting("enableGroupStats", e.target.checked)
+            }
+          />{" "}
+          Enable Group Stats
+        </label>
+        <label style={{ margin: "8px 0" }}>
+          <input
+            type="checkbox"
+            checked={groupSettings.enableLeaderboard}
+            onChange={e =>
+              updateGroupSetting("enableLeaderboard", e.target.checked)
+            }
+          />{" "}
+          Enable Leaderboard
+        </label>
+        <label style={{ margin: "8px 0" }}>
+          <input
+            type="checkbox"
+            checked={groupSettings.enableSharedCoins}
+            onChange={e =>
+              updateGroupSetting("enableSharedCoins", e.target.checked)
+            }
+          />{" "}
+          Enable Shared Coins
+        </label>
+        <Button
+          onClick={() => setIsSettingsVisible(false)}
+          sx={{
+            mt: 2,
+            backgroundColor: "#0e7467",
+            color: "#fff",
+            borderRadius: 50,
+            px: 4,
+            py: 1.5,
+            "&:hover": { backgroundColor: "#1ba494" }
+          }}
+        >
+          Back 🔙
+        </Button>
+      </div>
+    );
+  }
+
+  // --- Main Chat View ---
   return (
     <div className="chat-container enhanced">
       <h2 className="chat-title">{displayName || "Unknown"}'s Chat</h2>
       <div className="chat-box">
-        {messages.map((msg, index) => {
+        {messages.map((msg, i) => {
           const isMe = String(msg.sender) === String(user?.uid);
-          const nameToDisplay = msg.username ? msg.username : msg.sender;
           return (
             <div
-              key={index}
+              key={i}
               className={`chat-bubble ${isMe ? "sent" : "received"}`}
             >
-              {!isMe && <strong className="sender"> {nameToDisplay}</strong>}
+              {!isMe && (
+                <strong className="sender">
+                  {msg.username || msg.sender}
+                </strong>
+              )}
               <p className="message">{msg.message}</p>
             </div>
           );
         })}
         <div ref={messageEndRef} />
       </div>
-
       <div
-        className="chat-input-container"
-        style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          marginTop: 10
+        }}
       >
         <input
           type="text"
           value={input}
-          onChange={(e) => setInput(e.target.value)}
+          onChange={e => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Type a message..."
           className="chat-input"
@@ -283,30 +399,47 @@ export default function Messages() {
         <button onClick={handleSend} className="send-button">
           Send
         </button>
-        <Tooltip title="View Leaderboard">
-          <IconButton
-            sx={{
-              backgroundColor: "#e5c185",
-              color: "#FFFFFF",
-              margin: "0 auto",
-              "&:hover": { backgroundColor: "#deae9f" }
-            }}
-            onClick={() => setIsLeaderboardVisible(true)}
-          >
-            <LeaderboardIcon />
-          </IconButton>
-        </Tooltip>
+
+        {/* Show the stats icon if any of the features is on */}
+        {(groupSettings.enableGroupStats ||
+          groupSettings.enableLeaderboard ||
+          groupSettings.enableSharedCoins) && (
+          <Tooltip title="View Leaderboard / Coins">
+            <IconButton
+              sx={{
+                backgroundColor: "#e5c185",
+                color: "#fff",
+                "&:hover": { backgroundColor: "#deae9f" }
+              }}
+              onClick={() => setIsLeaderboardVisible(true)}
+            >
+              <LeaderboardIcon />
+            </IconButton>
+          </Tooltip>
+        )}
+
         <Tooltip title="Change Display Name">
           <IconButton
             sx={{
               backgroundColor: "#e5c185",
-              color: "#FFFFFF",
-              margin: "0 auto",
+              color: "#fff",
               "&:hover": { backgroundColor: "#deae9f" }
             }}
             onClick={() => setIsChangeUsernameVisible(true)}
           >
             <PersonIcon />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="Settings">
+          <IconButton
+            sx={{
+              backgroundColor: "#e5c185",
+              color: "#fff",
+              "&:hover": { backgroundColor: "#deae9f" }
+            }}
+            onClick={() => setIsSettingsVisible(true)}
+          >
+            <SettingsIcon />
           </IconButton>
         </Tooltip>
       </div>

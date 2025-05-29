@@ -47,7 +47,8 @@ export default function ChangeUsername() {
         borderRadius: "12px",
         background: "linear-gradient(135deg, #e5c185 0%, #deae9f 100%)",
         color: "#fff",
-        maxWidth: "400px",        // Adjust as needed
+        maxWidth: "400px", 
+        maxHeight: "400px",       // Adjust as needed
         margin: "0 auto",
         boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
       }}
