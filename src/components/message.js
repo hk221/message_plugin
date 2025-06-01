@@ -142,30 +142,48 @@ export default function Messages() {
     }
   };
 
+  // helper functions to format time in minutes for sorting
+  function formatTime(minutes) {
+    const totalSeconds = Math.floor(minutes * 60);
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
+    return `${hrs.toString().padStart(2, "0")}:${mins
+      .toString()
+      .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  }
+  function parseTimeStringToMinutes(timeStr) {
+    const [hrs, mins, secs] = timeStr.split(":").map(Number);
+    return hrs * 60 + mins + secs / 60;
+  }
+
   // Listen for per‐user stats when leaderboard open
   useEffect(() => {
     if (!isLeaderboardVisible) return;
+  
     handleReceive();
+  
     const unsub = onSnapshot(collection(firestore, "statistics"), async snap => {
       let statsArr = snap.docs.map(d => ({
         uid: d.id,
-        time: d.data().totalTimeStudied || 0,
+        time: d.data().totalTimeStudied ? parseTimeStringToMinutes(d.data().totalTimeStudied) : 0,
         likes: d.data().likes || 0,
         nudges: d.data().nudges || 0
       }));
-      statsArr.sort((a, b) => b.time - a.time);
+  
+      // Enrich each entry with username + trophies
       statsArr = await Promise.all(
         statsArr.map(async entry => {
           const [userSnap, trophySnap] = await Promise.all([
             getDoc(doc(firestore, "users", entry.uid)),
             getDoc(doc(firestore, "trophies", entry.uid))
           ]);
-      
+  
           const username =
             userSnap.exists() && userSnap.data().username
               ? userSnap.data().username
               : entry.uid;
-      
+  
           const trophyList = trophySnap.exists() ? trophySnap.data().items || [] : [];
           const emojiList = trophyList
             .map(id => {
@@ -173,7 +191,7 @@ export default function Messages() {
               return item?.emoji;
             })
             .filter(Boolean);
-      
+  
           return {
             ...entry,
             username,
@@ -181,8 +199,13 @@ export default function Messages() {
           };
         })
       );
+  
+      // ✅ Sort after enrichment
+      statsArr.sort((a, b) => b.time - a.time);
+  
       setIndividualStats(statsArr);
     });
+  
     return unsub;
   }, [isLeaderboardVisible]);
 
@@ -255,7 +278,7 @@ export default function Messages() {
                 padding: 12
               }}
             >
-              ⏱️ <strong>Total Time Studied:</strong> {groupTotalTime} mins
+              ⏱️ <strong>Total Time Studied:</strong> {groupTotalTime}
             </div>
           )}
           {groupSettings.enableSharedCoins && (
@@ -271,9 +294,9 @@ export default function Messages() {
           )}
           {groupSettings.enableLeaderboard && (
             <>
-              <h3 style={{ margin: "10px 0", fontSize: "1.5rem" }}>
+               <h2 style={{ fontSize: "2rem", marginBottom: 10 }}>
                 🥇 Leaderboard
-              </h3>
+              </h2>
               {filteredStats.map((u, idx) => (
               <div
                 key={u.uid}
@@ -287,10 +310,8 @@ export default function Messages() {
                 }}
               >
                 <div>
-                  <strong>
-                    {idx + 1}. {u.username}
-                  </strong>
-                  <span style={{ marginLeft: 8 }}>{u.time} mins</span>
+                <strong>{idx + 1}. {u.username}</strong>
+                  <span style={{ marginLeft: 8 }}>{formatTime(u.time)}</span>
                   {groupSettings.showTrophies && u.trophies?.length > 0 && (
                     <div style={{ marginTop: 4, fontSize: "1.2rem" }}>
                       {u.trophies.join(" ")}
@@ -496,7 +517,7 @@ export default function Messages() {
         })}
         <div ref={messageEndRef} />
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", minHeight: "60px", gap: 8, marginTop: 10 }}>
         <input
           type="text"
           value={input}
