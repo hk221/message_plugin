@@ -47,8 +47,16 @@ export default function Messages() {
   const [groupSettings, setGroupSettings] = useState({
     enableGroupStats: true,
     enableLeaderboard: true,
-    enableSharedCoins: false
+    enableSharedCoins: false,
+    showTrophies: true
   });
+
+  const trophyItems = [
+    { id: "goldDuck", name: "Golden Duck Trophy", emoji: "🦆✨" },
+    { id: "motivator", name: "Motivator Badge", emoji: "🚀" },
+    { id: "zenMaster", name: "Zen Master", emoji: "🧘‍♂️🌸" },
+    { id: "taskWizard", name: "Task Wizard", emoji: "🧙‍♂️📘" }
+  ];
 
   // 1️⃣ Listen for group settings changes
   useEffect(() => {
@@ -58,7 +66,8 @@ export default function Messages() {
         setGroupSettings({
           enableGroupStats: !!data.enableGroupStats,
           enableLeaderboard: !!data.enableLeaderboard,
-          enableSharedCoins: !!data.enableSharedCoins
+          enableSharedCoins: !!data.enableSharedCoins,
+          showTrophies: !!data.showTrophies
         });
       }
     });
@@ -147,13 +156,28 @@ export default function Messages() {
       statsArr.sort((a, b) => b.time - a.time);
       statsArr = await Promise.all(
         statsArr.map(async entry => {
-          const userSnap = await getDoc(doc(firestore, "users", entry.uid));
+          const [userSnap, trophySnap] = await Promise.all([
+            getDoc(doc(firestore, "users", entry.uid)),
+            getDoc(doc(firestore, "trophies", entry.uid))
+          ]);
+      
+          const username =
+            userSnap.exists() && userSnap.data().username
+              ? userSnap.data().username
+              : entry.uid;
+      
+          const trophyList = trophySnap.exists() ? trophySnap.data().items || [] : [];
+          const emojiList = trophyList
+            .map(id => {
+              const item = trophyItems.find(i => i.id === id);
+              return item?.emoji;
+            })
+            .filter(Boolean);
+      
           return {
             ...entry,
-            username:
-              userSnap.exists() && userSnap.data().username
-                ? userSnap.data().username
-                : entry.uid
+            username,
+            trophies: emojiList
           };
         })
       );
@@ -251,45 +275,50 @@ export default function Messages() {
                 🥇 Leaderboard
               </h3>
               {filteredStats.map((u, idx) => (
-                <div
-                  key={u.uid}
-                  style={{
-                    background: "rgba(255,255,255,0.1)",
-                    borderRadius: 8,
-                    padding: 8,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center"
-                  }}
-                >
-                  <div>
-                    <strong>
-                      {idx + 1}. {u.username}
-                    </strong>
-                    <span style={{ marginLeft: 8 }}>{u.time} mins</span>
-                  </div>
-                  <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                    <IconButton
-                      size="small"
-                      disabled={u.uid === user?.uid}
-                      onClick={() => sendLike(u.uid)}
-                      sx={{ color: "white" }}
-                    >
-                      <ThumbUpIcon fontSize="small" />
-                    </IconButton>
-                    <span>{u.likes}</span>
-                    <IconButton
-                      size="small"
-                      disabled={u.uid === user?.uid}
-                      onClick={() => sendNudge(u.uid)}
-                      sx={{ color: "white" }}
-                    >
-                      <NotificationsActiveIcon fontSize="small" />
-                    </IconButton>
-                    <span>{u.nudges}</span>
-                  </div>
+              <div
+                key={u.uid}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  borderRadius: 8,
+                  padding: 8,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}
+              >
+                <div>
+                  <strong>
+                    {idx + 1}. {u.username}
+                  </strong>
+                  <span style={{ marginLeft: 8 }}>{u.time} mins</span>
+                  {groupSettings.showTrophies && u.trophies?.length > 0 && (
+                    <div style={{ marginTop: 4, fontSize: "1.2rem" }}>
+                      {u.trophies.join(" ")}
+                    </div>
+                  )}
                 </div>
-              ))}
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <IconButton
+                    size="small"
+                    disabled={u.uid === user?.uid}
+                    onClick={() => sendLike(u.uid)}
+                    sx={{ color: "white" }}
+                  >
+                    <ThumbUpIcon fontSize="small" />
+                  </IconButton>
+                  <span>{u.likes}</span>
+                  <IconButton
+                    size="small"
+                    disabled={u.uid === user?.uid}
+                    onClick={() => sendNudge(u.uid)}
+                    sx={{ color: "white" }}
+                  >
+                    <NotificationsActiveIcon fontSize="small" />
+                  </IconButton>
+                  <span>{u.nudges}</span>
+                </div>
+              </div>
+            ))}
             </>
           )}
         </div>
@@ -375,6 +404,19 @@ export default function Messages() {
           }}
         >
           <CardContent sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <FormControlLabel
+              control={
+                <Switch
+                  checked={groupSettings.showTrophies}
+                  onChange={e =>
+                    updateGroupSetting("showTrophies", e.target.checked)
+                  }
+                  sx={{ "& .MuiSwitch-thumb": { backgroundColor: "#fff" } }}
+                />
+              }
+              label="Show Trophies in Leaderboard"
+              sx={{ color: "white", fontSize: "1rem" }}
+            />
             <FormControlLabel
               control={
                 <Switch
@@ -388,7 +430,6 @@ export default function Messages() {
               label="Enable Group Stats"
               sx={{ color: "white", fontSize: "1rem" }}
             />
-
             <FormControlLabel
               control={
                 <Switch
