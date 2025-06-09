@@ -100,8 +100,8 @@
   padding: 20px;
 
   /* Font settings */
-  font-family: "Roboto", sans-serif; /* Change to any font you prefer */
-  color: #00796b; /* Adjust this color as desired */
+  font-family: "Roboto", sans-serif; 
+  color: #00796b; 
 }
 
 .leaderboard-page h2 {

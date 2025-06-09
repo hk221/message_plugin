@@ -7,11 +7,13 @@ import {
 } from "firebase/auth";
 import { TextField, Button, Typography, Box, Link } from "@mui/material";
 
+// This component provides a form for user authentication (login/signup) using Firebase.
 export default function AuthForm({ onLogin }) {
   const [isLogin, setIsLogin] = useState(true); // Toggle between login/signup
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState(""); // State for email input
+  const [password, setPassword] = useState(""); // State for password input
 
+  // Function to handle authentication based on the form state (login or signup)
   const handleAuth = async () => {
     try {
       const userCred = isLogin
@@ -24,12 +26,14 @@ export default function AuthForm({ onLogin }) {
     }
   };
 
+  // Render the authentication form with text fields for email and password
+  // and a button to submit the form. It also includes a link to toggle between login and signup.
   return (
     <Box sx={{ maxWidth: 320, mx: "auto", textAlign: "center", mt: 8 }}>
       <Typography variant="h5" sx={{ mb: 2 }}>
         {isLogin ? "Login" : "Sign Up"}
       </Typography>
-
+      {/* Text fields for email and password input */}
       <TextField
         label="Email"
         type="email"

@@ -10,14 +10,19 @@ import {
   Box
 } from "@mui/material";
 
+// This component allows users to change their display name in the application.
+// It retrieves the current username from Firestore and allows the user to update it.
+// The component uses Firebase Firestore to store and retrieve the username.
 export default function ChangeUsername() {
-  const { user } = useAuth();
-  const [username, setUsername] = useState("");
-  const [storedUsername, setStoredUsername] = useState("");
+  const { user } = useAuth(); // Access the current user from the AuthContext
+  const [username, setUsername] = useState(""); // State for the new username input
+  const [storedUsername, setStoredUsername] = useState(""); // State for the currently stored username
 
+  // Effect to fetch the current username from Firestore when the component mounts or user changes
   useEffect(() => {
     if (user) {
-      const userDocRef = doc(firestore, "users", user.uid);
+      // Fetch the user's document from Firestore 
+      const userDocRef = doc(firestore, "users", user.uid); // Reference to the user's document
       getDoc(userDocRef).then((docSnap) => {
         if (docSnap.exists() && docSnap.data().username) {
           setStoredUsername(docSnap.data().username);
@@ -26,9 +31,11 @@ export default function ChangeUsername() {
     }
   }, [user]);
 
+  // Function to handle saving the new username to Firestore
   const handleSave = async () => {
+    // Check if the user is authenticated before proceeding
     if (!user) return;
-    const userDocRef = doc(firestore, "users", user.uid);
+    const userDocRef = doc(firestore, "users", user.uid); // Reference to the user's document
     try {
       await setDoc(userDocRef, { username }, { merge: true });
       setStoredUsername(username);
@@ -37,31 +44,33 @@ export default function ChangeUsername() {
     }
   };
 
+  // Render the component with a form to change the username
   return (
-    <Paper
-      elevation={6}
-      sx={{
-        px: 2,
-        py: 1,
-        mb: 2,
-        borderRadius: "12px",
-        background: "linear-gradient(135deg, #e5c185 0%, #deae9f 100%)",
-        color: "#fff",
-        maxWidth: "400px", 
-        maxHeight: "400px",       // Adjust as needed
-        margin: "0 auto",
-        boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
-      }}
-    >
-      <Box
+      <Paper
+        elevation={6}
         sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-          justifyContent: "center", // Center everything horizontally
-          flexWrap: "wrap",         // Allows wrapping on small screens
+          px: 2,
+          py: 1,
+          mb: 2,
+          borderRadius: "12px",
+          background: "linear-gradient(135deg, #e5c185 0%, #deae9f 100%)",
+          color: "#fff",
+          maxWidth: "400",
+          maxHeight: "400",
+          width: "auto",  
+          height: "auto",      
+          boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)",
         }}
       >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            justifyContent: "center",
+            flexWrap: "wrap",
+          }}
+        >
         <Typography
           variant="body1"
           sx={{ fontWeight: "bold", whiteSpace: "nowrap" }}
@@ -77,13 +86,13 @@ export default function ChangeUsername() {
           sx={{
             backgroundColor: "#ffffff",
             borderRadius: "4px",
-            width: "140px",       // Adjust as needed
+            width: "140px",       
             "& .MuiOutlinedInput-root": {
-              fontSize: "0.9rem", // Slightly smaller font
+              fontSize: "0.9rem", 
             },
           }}
         />
-
+        {/* Button to save the new username */}
         <Button
           onClick={handleSave}
           variant="contained"

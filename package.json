@@ -20,7 +20,6 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^7.1.1",
-    "react-sound": "^1.2.0",
     "react-virtuoso": "^4.12.3",
     "recharts": "^2.15.1",
     "serve": "^14.2.3",

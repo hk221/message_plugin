@@ -26,15 +26,17 @@ import { useAuth } from "./AuthContext";
 import ChangeUsername from "./ChangeUsername";
 import "../Chat.css";
 
+// This component handles the global chat functionality, including sending messages,
+// displaying messages, managing user stats, and providing a leaderboard view.
 export default function Messages() {
   // Chat and UI state
-  const [input, setInput] = useState("");
-  const [messages, setMessages] = useState([]);
-  const [isLeaderboardVisible, setIsLeaderboardVisible] = useState(false);
-  const [isChangeUsernameVisible, setIsChangeUsernameVisible] = useState(false);
-  const [isSettingsVisible, setIsSettingsVisible] = useState(false);
-  const messageEndRef = useRef(null);
-  const { user } = useAuth();
+  const [input, setInput] = useState(""); // Input for new messages
+  const [messages, setMessages] = useState([]); // Array to hold chat messages
+  const [isLeaderboardVisible, setIsLeaderboardVisible] = useState(false); // Toggle for leaderboard visibility
+  const [isChangeUsernameVisible, setIsChangeUsernameVisible] = useState(false); // Toggle for change username visibility
+  const [isSettingsVisible, setIsSettingsVisible] = useState(false); // Toggle for settings visibility
+  const messageEndRef = useRef(null); // Ref for auto-scrolling to the latest message
+  const { user } = useAuth(); // Get the current authenticated user
 
   // User info
   const [displayName, setDisplayName] = useState("");
@@ -43,6 +45,7 @@ export default function Messages() {
   const [groupTotalTime, setGroupTotalTime] = useState(0);
   const [individualStats, setIndividualStats] = useState([]);
   const filteredStats = individualStats.filter(u => u.uid !== "default");
+
   // Group‐wide toggles
   const [groupSettings, setGroupSettings] = useState({
     enableGroupStats: true,
@@ -51,6 +54,7 @@ export default function Messages() {
     showTrophies: true
   });
 
+  // Trophy items
   const trophyItems = [
     { id: "goldDuck", name: "Golden Duck Trophy", emoji: "🦆✨" },
     { id: "motivator", name: "Motivator Badge", emoji: "🚀" },
@@ -58,7 +62,7 @@ export default function Messages() {
     { id: "taskWizard", name: "Task Wizard", emoji: "🧙‍♂️📘" }
   ];
 
-  // 1️⃣ Listen for group settings changes
+  // Listen for group settings changes
   useEffect(() => {
     const unsub = onSnapshot(doc(firestore, "groups", "globalChat"), snap => {
       if (snap.exists()) {
@@ -74,7 +78,7 @@ export default function Messages() {
     return unsub;
   }, []);
 
-  // 2️⃣ Listen for user displayName
+  // Listen for user displayName
   useEffect(() => {
     if (!user) return;
     const unsub = onSnapshot(doc(firestore, "users", user.uid), snap => {
@@ -87,7 +91,7 @@ export default function Messages() {
     return unsub;
   }, [user]);
 
-  // 3️⃣ Listen for chat messages
+  // Listen for chat messages
   useEffect(() => {
     const unsub = onSnapshot(collection(firestore, "globalChat"), snapshot => {
       const all = snapshot.docs
@@ -163,6 +167,8 @@ export default function Messages() {
   
     handleReceive();
   
+    // Listen for changes in the statistics collection
+    // and enrich each entry with username and trophies
     const unsub = onSnapshot(collection(firestore, "statistics"), async snap => {
       let statsArr = snap.docs.map(d => ({
         uid: d.id,
@@ -178,12 +184,14 @@ export default function Messages() {
             getDoc(doc(firestore, "users", entry.uid)),
             getDoc(doc(firestore, "trophies", entry.uid))
           ]);
-  
+          
+          // Get username from user document, or fallback to uid
           const username =
             userSnap.exists() && userSnap.data().username
               ? userSnap.data().username
               : entry.uid;
-  
+          
+          // Get trophies from trophy document, or fallback to empty array
           const trophyList = trophySnap.exists() ? trophySnap.data().items || [] : [];
           const emojiList = trophyList
             .map(id => {
@@ -200,7 +208,7 @@ export default function Messages() {
         })
       );
   
-      // ✅ Sort after enrichment
+      // Sort after enrichment
       statsArr.sort((a, b) => b.time - a.time);
   
       setIndividualStats(statsArr);
@@ -212,6 +220,7 @@ export default function Messages() {
   // Send a new chat message
   const handleSend = async () => {
     if (!input.trim() || !user) return;
+    // Ensure user has a display name
     const messageData = {
       sender: user.uid,
       username: displayName,
@@ -240,6 +249,7 @@ export default function Messages() {
     }
   };
 
+  // Handle Enter key to send message
   const handleKeyDown = e => e.key === "Enter" && handleSend();
 
   // --- Leaderboard View ---
@@ -370,7 +380,7 @@ export default function Messages() {
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          height: "20vh",
+          height: "100%",
           background: "linear-gradient(135deg, #e5c185, #deae9f)",
           borderRadius: 10,
           padding: 15,
@@ -503,7 +513,10 @@ export default function Messages() {
   return (
     <div className="chat-container enhanced">
       <h2 className="chat-title">{displayName || "Unknown"}'s Chat</h2>
-      <div className="chat-box">
+      <div
+          className="chat-box"
+          style={{ height: "300px", overflowY: "auto" }}
+        >
         {messages.map((msg, i) => {
           const isMe = String(msg.sender) === String(user?.uid);
           return (

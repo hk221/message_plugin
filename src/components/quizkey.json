@@ -1,4 +1,5 @@
 {
+  "comment": "This is a service account key for Firebase Admin SDK. Keep it secure and do not expose it publicly.",
   "type": "service_account",
   "project_id": "quizdatabase-6eda3",
   "private_key_id": "fda3a11425236361b96de48052313a43a99cce3c",
