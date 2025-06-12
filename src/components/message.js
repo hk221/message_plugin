@@ -264,7 +264,10 @@ export default function Messages() {
           padding: 20,
           background: "linear-gradient(135deg, #1ba494, #0e7467)",
           borderRadius: 16,
-          color: "white"
+          color: "white",
+          height: "80%", 
+          width: "100%",           
+          overflowY: "auto"
         }}
       >
         <h2 style={{ fontSize: "2rem", marginBottom: 10 }}>
